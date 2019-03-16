@@ -4,10 +4,10 @@
 \alias{\%info\%}
 \title{Get cluster and index (meta) data.}
 \usage{
-rescource \%info\% info
+resource \%info\% info
 }
 \arguments{
-\item{rescource}{An \code{elastic_rescource} object that contains the information on the
+\item{resource}{An \code{elastic_resource} object that contains the information on the
 Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 not already exist, it will be created automatically.}
 
@@ -20,5 +20,6 @@ An operator to be used with requests for information
 \dontrun{
 elastic("http://localhost:9200", "iris", "data") \%info\% list_indices()
 elastic("http://localhost:9200", "iris", "data") \%info\% list_fields()
+elastic("http://localhost:9200") \%info\% version()
 }
 }

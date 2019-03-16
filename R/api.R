@@ -31,7 +31,7 @@ is_elastic <- function(x) inherits(x, "elastic")
 
 #' @export
 #' @rdname elastic_predicates
-is_elastic_rescource <- function(x) inherits(x, "elastic_rescource")
+is_elastic_resource <- function(x) inherits(x, "elastic_resource")
 
 #' @export
 #' @rdname elastic_predicates
@@ -68,30 +68,56 @@ is_elastic_info <- function(x) inherits(x, "elastic_info")
 #' @param cluster_url URL to the Elastic cluster.
 #' @param index The name of an index on the Elasticsearch cluster.
 #' @param doc_type [optional] The name of a document type within the index.
-#' @return An \code{elastic_rescource} object.
+#' @return An \code{elastic_resource} object.
 #'
 #' @examples
 #' \dontrun{
 #' my_data <- elastic("http://localhost:9200", "iris", "data")
 #' }
-elastic <- function(cluster_url, index, doc_type = NULL) {
-  stopifnot(is.character(cluster_url), is.character(index), is.character(doc_type) | is.null(doc_type),
+elastic <- function(cluster_url, index = NULL, doc_type = NULL) {
+  stopifnot(is.character(cluster_url), is.character(index) | is.null(index), is.character(doc_type) | is.null(doc_type),
             valid_connection(cluster_url))
-
-  if (substr(cluster_url, nchar(cluster_url), nchar(cluster_url)) == "/") {
+  if (is.null(index)) {
+    valid_index_url <- cluster_url
+  } else if (substr(cluster_url, nchar(cluster_url), nchar(cluster_url)) == "/") {
     valid_index_url <- paste0(cluster_url, index)
   } else {
     valid_index_url <- paste0(cluster_url, "/", index)
   }
 
-  if (is.null(doc_type)) {
+  if (is.null(index)) {
+    valid_search_endpoint <- valid_index_url
+  } else if (is.null(doc_type)) {
     valid_search_endpoint <- paste0(valid_index_url, "/_search")
   } else {
     valid_search_endpoint <- paste0(valid_index_url, "/", doc_type, "/_search")
   }
 
   structure(list("search_url" = valid_search_endpoint, "cluster_url" = cluster_url,
-                 "index" = index, "doc_type" = doc_type), class = c("elastic_rescource", "elastic"))
+                 "index" = index, "doc_type" = doc_type), class = c("elastic_resource", "elastic"))
+}
+
+
+bulk_size <- 1000
+
+#' Get or Set the elasticsearch bulk size.
+#'
+#' @export
+#'
+#' @param size integer The number of document to bulk per request.
+#' 
+#' @seealso \url{https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html}
+#'
+#' @examples
+#' elastic_bulk_size(100)
+elastic_bulk_size <- function(size = NULL) {
+  if (!is.null) {
+    stopifnot(is.integer(size), size >= 1, size <= 5000)
+    bulk_size <- size
+    NULL
+  } else {
+    bulk_size
+  }
 }
 
 
@@ -210,6 +236,39 @@ list_indices <- function() {
             class = c("elastic_info", "elastic_api", "elastic"))
 }
 
+#' Elasticsearch version
+#'
+#' Returns the major, minor and build version numbers for an Elasticsearch cluster, given a valid
+#' URL to an Elasticsearch cluster.
+#'
+#' @export
+#'
+#' @param url A valid URL to an Elasticsearch cluster.
+#' @return A list with the \code{major}, \code{minor} and \code{build} numbers.
+#'
+#' @examples
+#' \dontrun{
+#' elastic("http://localhost:9200") %info% es_version()
+#' $major
+#' [1] 5
+#'
+#' $minor
+#' [1] 0
+#'
+#' $build
+#' [1] 1
+#' }
+es_version <- function() {
+  endpoint <- "/"
+  process_response <- function(response) {
+    check_http_code_throw_error(response)
+    version <- strsplit(strsplit(httr::content(response, as = "parsed")$version$number[1], "-")[[1]][1], "\\.")[[1]]
+    list("major" = version[1], "minor" = version[2], "build" = version[3])
+  }
+  structure(list("endpoint" = endpoint, "process_response" = process_response),
+            class = c("elastic_info", "elastic_api", "elastic"))
+}
+
 
 # ---- operators ----------------------------------------------------------------------------------
 
@@ -220,7 +279,7 @@ list_indices <- function() {
 #'
 #' @export
 #'
-#' @param rescource An \code{elastic_rescource} object that contains the information on the
+#' @param resource An \code{elastic_resource} object that contains the information on the
 #' Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 #' not already exist, it will be created automatically.
 #' @param info \code{elastic_info} object.
@@ -229,17 +288,17 @@ list_indices <- function() {
 #' \dontrun{
 #' elastic("http://localhost:9200", "iris", "data") %info% list_indices()
 #' elastic("http://localhost:9200", "iris", "data") %info% list_fields()
+#' elastic("http://localhost:9200") %info% version()
 #' }
-`%info%` <- function(rescource, info) UseMethod("%info%")
+`%info%` <- function(resource, info) UseMethod("%info%")
 
 #' @export
-`%info%.elastic_rescource` <- function(rescource, info) {
-  stopifnot(is_elastic_rescource(rescource), is_elastic_info(info))
-  api_call <- paste0(rescource$cluster_url, info$endpoint)
+`%info%.elastic_resource` <- function(resource, info) {
+  stopifnot(is_elastic_resource(resource), is_elastic_info(info))
+  api_call <- paste0(resource$cluster_url, info$endpoint)
   response <- httr::GET(api_call)
   info$process_response(response)
 }
-
 
 #' Index a data frame.
 #'
@@ -252,7 +311,7 @@ list_indices <- function() {
 #'
 #' @export
 #'
-#' @param rescource An \code{elastic_rescource} object that contains the information on the
+#' @param resource An \code{elastic_resource} object that contains the information on the
 #' Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 #' not already exist, it will be created automatically.
 #' @param df data.frame whose rows will be indexed as documents in the Elasticsearch cluster.
@@ -263,21 +322,26 @@ list_indices <- function() {
 #' \dontrun{
 #' elastic("http://localhost:9200", "iris", "data") %index% iris
 #' }
-`%index%` <- function(rescource, df) UseMethod("%index%")
+`%index%` <- function(resource, df) UseMethod("%index%")
 
 #' @export
-`%index%.elastic_rescource` <- function(rescource, df) {
-  stopifnot(is_elastic_rescource(rescource), is.data.frame(df), !is.null(rescource$doc_type))
+`%index%.elastic_resource` <- function(resource, df) {
+  stopifnot(is_elastic_resource(resource), is.data.frame(df), !is.null(resource$doc_type))
   colnames(df) <- cleaned_field_names(colnames(df))
 
-  df_size_mb <- utils::object.size(df) / (1000 * 1000)
-  chunk_size_mb <- 10
-  num_data_chunks <- ceiling(df_size_mb / chunk_size_mb)
-  num_rows_per_chunk <- ceiling(nrow(df) / num_data_chunks)
+  num_rows_per_chunk <- ceiling(nrow(df) / bulk_size) # bulk n documents per request to optimize bulk
   chunk_indices <- lapply(X = seq(1, nrow(df), num_rows_per_chunk),
                           FUN = function(x) c(x, min(nrow(df), x + num_rows_per_chunk - 1)))
 
-  lapply(X = chunk_indices, FUN = function(x) index_bulk_dataframe(rescource, df[x[1]:x[2], ]))
+  # starts parallel to pereform requests
+  cl <- makeCluster(detectCores())
+  registerDoParallel(cl)
+  stopCluster(cl)
+
+  binds <- foreach(cl = cl, i = chunk_indices, .combine = rbind) %do% {
+    index_bulk_dataframe(resource, df[i[[1]],])
+  }
+
   message("... data successfully indexed", appendLF = FALSE)
 }
 
@@ -290,7 +354,7 @@ list_indices <- function() {
 #'
 #' @export
 #'
-#' @param rescource An \code{elastic_rescource} object that contains the information on the
+#' @param resource An \code{elastic_resource} object that contains the information on the
 #' Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 #' not already exist, it will be created automatically.
 #' @param mapping A JSON object containing the mapping details required for the index.
@@ -301,14 +365,14 @@ list_indices <- function() {
 #' \dontrun{
 #' elastic("http://localhost:9200", "iris", "data") %create% mapping_default_simple()
 #' }
-`%create%` <- function(rescource, mapping) UseMethod("%create%")
+`%create%` <- function(resource, mapping) UseMethod("%create%")
 
 #' @export
-`%create%.elastic_rescource` <- function(rescource, mapping) {
-  response <- httr::PUT(paste(rescource$cluster_url, rescource$index, sep = "/"), body = mapping,
+`%create%.elastic_resource` <- function(resource, mapping) {
+  response <- httr::PUT(paste(resource$cluster_url, resource$index, sep = "/"), body = mapping,
                         httr::add_headers("Content-Type" = "application/json"))
   check_http_code_throw_error(response)
-  message(paste("...", rescource$index, "has been created"))
+  message(paste("...", resource$index, "has been created"))
 }
 
 
@@ -319,49 +383,51 @@ list_indices <- function() {
 #'
 #' @export
 #'
-#' @param rescource An \code{elastic_rescource} object that contains the information on the
+#' @param resource An \code{elastic_resource} object that contains the information on the
 #' Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 #' not already exist, it will be created automatically.
-#' @param approve Must be equal to \code{"TRUE"} for deletion for all documents in a rescource,
+#' @param approve Must be equal to \code{"TRUE"} for deletion for all documents in a resource,
 #' OR be a character vector of document ids if only specific documents need to be deleted.
 #'
 #' @examples
 #' \dontrun{
 #' elastic("http://localhost:9200", "iris", "data") %delete% TRUE
 #' }
-`%delete%` <- function(rescource, approve) UseMethod("%delete%")
+`%delete%` <- function(resource, approve) UseMethod("%delete%")
 
 #' @export
-`%delete%.elastic_rescource` <- function(rescource, approve) {
+`%delete%.elastic_resource` <- function(resource, approve) {
   if (is.character(approve) & is.vector(approve)) {
     ids <- approve
   } else {
-    if (approve != TRUE) stop("please approve deletion") else ids <- NULL
+    if (is.character(approve)) {
+      query <- if (approve != "") approve else '{"query": {"match_all": {}}}'
+      ids <- NULL
+    } else if (approve != TRUE) {
+      stop("please approve deletion")
+    } else {
+      ids <- NULL
+      query <- NULL
+    }
   }
 
   if (is.null(ids)) {
-    if (is.null(rescource$doc_type)) {
-      response <- httr::DELETE(paste(rescource$cluster_url, rescource$index, sep = "/"))
+    if (is.null(query)) {
+      response <- httr::DELETE(paste(resource$cluster_url, resource$index, sep = "/"))
       check_http_code_throw_error(response)
-      message(paste0("... ", rescource$index, " has been deleted"))
+      message(paste0("... ", resource$index, " has been deleted"))
     } else {
-      api_call_payload <- '{"query": {"match_all": {}}}'
-      doc_type_ids <- as.vector(scroll_search(rescource, api_call_payload, extract_id_results))
-      metadata <- create_metadata("delete", rescource$index, rescource$doc_type, doc_type_ids)
-      deletions_file <- create_bulk_delete_file(metadata)
-      response <- httr::PUT(url = rescource$cluster_url,
-                            path = "/_bulk",
-                            body = httr::upload_file(deletions_file),
-                            httr::add_headers("Content-Type" = "application/json"))
+      response <- httr::POST(url = paste(resource$cluster_url, resource$index, "_delete_by_query", sep = "/"),
+                             body = query,
+                             httr::add_headers("Content-Type" = "application/json"))
 
-      file.remove(deletions_file)
       check_http_code_throw_error(response)
-      message(paste0("... ", rescource$index, "/", rescource$doc_type, " has been deleted"))
+      message(paste0("... ", resource$index, "::", query, " has been deleted"))
     }
   } else {
-    metadata <- create_metadata("delete", rescource$index, rescource$doc_type, ids)
+    metadata <- create_metadata("delete", resource$index, resource$doc_type, ids)
     deletions_file <- create_bulk_delete_file(metadata)
-    response <- httr::PUT(url = rescource$cluster_url,
+    response <- httr::PUT(url = resource$cluster_url,
                           path = "/_bulk",
                           body = httr::upload_file(deletions_file),
                           httr::add_headers("Content-Type" = "application/json"))
@@ -377,7 +443,7 @@ list_indices <- function() {
 #'
 #' @export
 #'
-#' @param rescource An \code{elastic_rescource} object that contains the information on the
+#' @param resource An \code{elastic_resource} object that contains the information on the
 #' Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 #' not already exist, it will be created automatically.
 #' @param search \code{elastic_query} or \code{elastic_aggs} object.
@@ -395,25 +461,25 @@ list_indices <- function() {
 #' # 5          5.2         3.5          1.5         0.2  setosa
 #' # 6          5.2         3.4          1.4         0.2  setosa
 #' }
-`%search%` <- function(rescource, search) UseMethod("%search%")
+`%search%` <- function(resource, search) UseMethod("%search%")
 
 #' @export
-`%search%.elastic` <- function(rescource, search) {
-  stopifnot(is_elastic_rescource(rescource) & is_elastic_api(search))
+`%search%.elastic` <- function(resource, search) {
+  stopifnot(is_elastic_resource(resource) & is_elastic_api(search))
 
   if (is_elastic_query(search)) {
     if (search$size != 0) {
       api_call_payload <- paste0('{"size":', search$size, ', ', search$api_call, '}')
-      return(from_size_search(rescource, api_call_payload))
+      return(from_size_search(resource, api_call_payload))
 
     } else {
       api_call_payload <- paste0('{"size": 10000', ', ', search$api_call, '}')
-      return(scroll_search(rescource, api_call_payload))
+      return(scroll_search(resource, api_call_payload))
 
     }
   } else if (is_elastic_aggs(search)) {
     api_call_payload <- paste0('{"size":', search$size, ', ', search$api_call, '}')
-    return(from_size_search(rescource, api_call_payload))
+    return(from_size_search(resource, api_call_payload))
   }
 }
 

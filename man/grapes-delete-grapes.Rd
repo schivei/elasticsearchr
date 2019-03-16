@@ -4,14 +4,14 @@
 \alias{\%delete\%}
 \title{Delete Elasticsearch index.}
 \usage{
-rescource \%delete\% approve
+resource \%delete\% approve
 }
 \arguments{
-\item{rescource}{An \code{elastic_rescource} object that contains the information on the
+\item{resource}{An \code{elastic_resource} object that contains the information on the
 Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 not already exist, it will be created automatically.}
 
-\item{approve}{Must be equal to \code{"TRUE"} for deletion for all documents in a rescource,
+\item{approve}{Must be equal to \code{"TRUE"} for deletion for all documents in a resource,
 OR be a character vector of document ids if only specific documents need to be deleted.}
 }
 \description{

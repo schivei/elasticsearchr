@@ -21,8 +21,20 @@
 #' string or long format.
 #'
 #' @export
-mapping_default_simple <- function() {
-  jsonlite::prettify(
+mapping_default_simple <- function(url = NULL) {
+  doc_start <- '"_default_": {'
+  doc_end <- '}'
+
+  if (!is.null(resource) && is_elastic_resource(resource)) {
+    version <- elastic(url) %info% es_version(resource)
+
+    if (version$major >= 7) {
+      doc_start <- ''
+      doc_end <- ''
+    }
+  }
+
+  jsonlite::prettify(paste0(
   '{
     "settings": {
       "index": {
@@ -37,7 +49,7 @@ mapping_default_simple <- function() {
       }
     },
     "mappings": {
-      "_default_": {
+      ', doc_start, '
         "dynamic_templates": [
           {
             "strings": {
@@ -57,9 +69,9 @@ mapping_default_simple <- function() {
               }
             }
           }]
-      }
+      ', doc_end, '
     }
-  }')
+  }'))
 }
 
 
@@ -69,10 +81,22 @@ mapping_default_simple <- function() {
 #'
 #' @export
 mapping_fielddata_true <- function() {
-  jsonlite::prettify(
+  doc_start <- '"_default_": {'
+  doc_end <- '}'
+
+  if (!is.null(resource) && is_elastic_resource(resource)) {
+    version <- elastic(url) %info% es_version(resource)
+
+    if (version$major >= 7) {
+      doc_start <- ''
+      doc_end <- ''
+    }
+  }
+
+  jsonlite::prettify(paste0(
   '{
     "mappings": {
-      "_default_": {
+      ', doc_start, '
         "dynamic_templates": [
           {
             "strings": {
@@ -84,7 +108,7 @@ mapping_fielddata_true <- function() {
             }
           }
         ]
-      }
+      ', doc_end, '
     }
-}')
+}'))
 }

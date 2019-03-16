@@ -46,10 +46,19 @@ load_test_data <- function() {
   # delete any index called 'iris' on localhost
   response <- httr::DELETE("http://localhost:9200/iris")
 
+  major = elastic_version("http://localhost:9200")$major
+
   # if testing on Elasticsearch 5.x then ensure fielddata: true as a default mapping for strings
-  if (elastic_version("http://localhost:9200")$major >= 5) {
+  if (major >= 5 && major < 7) {
     default_iris_mapping <- '{"mappings":{"_default_":{"dynamic_templates":[{"strings":{
       "match_mapping_type":"string","mapping":{"type":"text","fielddata":true}}}]}}}'
+    response <- httr::PUT("http://localhost:9200/iris", body = default_iris_mapping,
+                          httr::add_headers("Content-Type" = "application/json"))
+
+    check_http_code_throw_error(response)
+  } else if (major >= 7) {
+    default_iris_mapping <- '{"mappings":{"dynamic_templates":[{"strings":{
+      "match_mapping_type":"string","mapping":{"type":"text","fielddata":true}}}]}}'
     response <- httr::PUT("http://localhost:9200/iris", body = default_iris_mapping,
                           httr::add_headers("Content-Type" = "application/json"))
 
@@ -59,15 +68,16 @@ load_test_data <- function() {
   # index iris dataset from first principles (i.e. not using the elasticsearchr)
   for (i in 1:150) {
     iris_json_data <- gsub("\\[|\\]", "", jsonlite::toJSON((iris_data[i, ])))
-    response <- httr::POST(paste0("http://localhost:9200/iris/data/", i), body = iris_json_data,
+    response <- httr::POST(paste0("http://localhost:9200/iris/_doc/", i), body = iris_json_data,
                            encode = "json", httr::add_headers("Content-Type" = "application/json"))
     if (httr::status_code(response) != 201) {
+      check_http_code_throw_error(response)
       stop("cannot index data into Elasticsearch for running tests", call. = FALSE)
     }
   }
 
   # wait until all 150 documents have been indexed and are ready for searching until returning
-  wait_finish_indexing("http://localhost:9200/iris/data/_search?size=150&q=*", 150)
+  wait_finish_indexing("http://localhost:9200/iris/_doc/_search?size=150&q=*", 150)
 
   TRUE
 }

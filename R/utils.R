@@ -82,13 +82,8 @@ valid_connection <- function(url) {
 #' [1] 1
 #' }
 elastic_version <- function(url) {
-  valid_connection(url)
-  response <- httr::GET(url)
-  check_http_code_throw_error(response)
-  version_string <- httr::content(response)$version$number
-  version <- as.integer(strsplit(version_string, "\\.")[[1]])
-
-  list("major" = version[1], "minor" = version[2], "build" = version[3])
+  version <- elastic(url) %info% es_version()
+  return(version)
 }
 
 
@@ -317,7 +312,6 @@ index_bulk_dataframe <- function(rescource, df) {
 #' # 6          5.2         3.4          1.4         0.2  setosa
 #' }
 from_size_search <- function(rescource, api_call_payload) {
-
   response <- httr::POST(rescource$search_url, body = api_call_payload,
                          httr::add_headers("Content-Type" = "application/json"))
 

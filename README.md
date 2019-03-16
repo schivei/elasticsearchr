@@ -92,6 +92,16 @@ Refers to documents of type 'data' in the 'iris' index located on an Elasticsear
 - it is possible to leave the document type empty if you need to refer to all documents in an index; and,
 - `elastic` objects can be defined even if the underling resources have yet to be brought into existence.
 
+### Defining bulk size for optimal requests
+
+To index or delete many documents from data frame, the `elasticsearchr` uses parallel bulk, but, if you heave too 
+many documents to index, elasticsearch can block requests. Use `elastic_bulk_size` to set the number of documents can be sented
+to elasticsearch via bulk.
+
+```r
+elastic_bulk_size(2000)
+```
+
 ### Indexing New Data
 
 To index (insert) data from a data frame, use the `%index%` operator as follows:
@@ -296,6 +306,21 @@ Or to list all of the available fields in an index,
 elastic("http://localhost:9200", "iris") %info% list_fields()
 
 # [1] "petal_length" "petal_width" "sepal_length" "sepal_width" "species"
+```
+
+Or to get elasticsearch version,
+
+```r
+elastic("http://localhost:9200") %info% es_version()
+
+# $major
+# [1] "7"
+# 
+# $minor
+# [1] "0"
+# 
+# $build
+# [1] "0"
 ```
 
 ## Acknowledgements

@@ -14,6 +14,7 @@
 
 
 context('elasticsearchr utils')
+source("./helper-elasticsearch_test_data.R")
 
 
 test_that('valid_connection identifies valid URLs to Elasticsearch rescources', {
@@ -92,11 +93,11 @@ test_that('create_metadata creates Bulk API metadata when doc ids are given', {
   doc_ids <- c(1, 2)
 
   # act
-  metadata <- create_metadata("index", "iris", "data", doc_ids)
+  metadata <- create_metadata("index", "iris", "_doc", doc_ids)
 
   # assert
-  expected_metadata <- c('{"index": {"_index": "iris", "_type": "data", "_id": "1"}}',
-                       '{"index": {"_index": "iris", "_type": "data", "_id": "2"}}')
+  expected_metadata <- c('{"index": {"_index": "iris", "_type": "_doc", "_id": "1"}}',
+                       '{"index": {"_index": "iris", "_type": "_doc", "_id": "2"}}')
   expect_equal(metadata, expected_metadata)
 })
 
@@ -106,11 +107,11 @@ test_that('create_metadata creates Bulk API metadata when no doc ids are given',
   n <- 2
 
   # act
-  metadata <- create_metadata("index", "iris", "data", n = 2)
+  metadata <- create_metadata("index", "iris", "_doc", n = 2)
 
   # assert
-  expected_metadata <- c('{"index": {"_index": "iris", "_type": "data"}}',
-                       '{"index": {"_index": "iris", "_type": "data"}}')
+  expected_metadata <- c('{"index": {"_index": "iris", "_type": "_doc"}}',
+                       '{"index": {"_index": "iris", "_type": "_doc"}}')
   expect_equal(metadata, expected_metadata)
 })
 
@@ -118,7 +119,7 @@ test_that('create_metadata creates Bulk API metadata when no doc ids are given',
 test_that('create_bulk_upload_file produces the bulk_upload file for indexing data.frame data', {
   # arrange
   df <- iris[1:2,]
-  metadata <- create_metadata("index", "iris", "data", n = 2)
+  metadata <- create_metadata("index", "iris", "_doc", n = 2)
 
   # act
   bulk_upload_file <- create_bulk_upload_file(metadata, df)
@@ -128,9 +129,9 @@ test_that('create_bulk_upload_file produces the bulk_upload file for indexing da
   file.remove(bulk_upload_file)
 
   expected_upload_file <- c(
-    '{\"index\": {\"_index\": \"iris\", \"_type\": \"data\"}}',
+    '{\"index\": {\"_index\": \"iris\", \"_type\": \"_doc\"}}',
     '{\"Sepal.Length\":5.1,\"Sepal.Width\":3.5,\"Petal.Length\":1.4,\"Petal.Width\":0.2,\"Species\":\"setosa\"}',
-    '{\"index\": {\"_index\": \"iris\", \"_type\": \"data\"}}',
+    '{\"index\": {\"_index\": \"iris\", \"_type\": \"_doc\"}}',
     '{\"Sepal.Length\":4.9,\"Sepal.Width\":3.0,\"Petal.Length\":1.4,\"Petal.Width\":0.2,\"Species\":\"setosa\"}'
   )
 
@@ -141,7 +142,7 @@ test_that('create_bulk_upload_file produces the bulk_upload file for indexing da
 test_that('create_bulk_delete_file produces bulk_delete file', {
   # arrange
   ids <- c(1, 2)
-  metadata <- create_metadata("delete", "iris", "data", ids)
+  metadata <- create_metadata("delete", "iris", "_doc", ids)
 
   # act
   bulk_delete_file <- create_bulk_delete_file(metadata)
@@ -150,8 +151,8 @@ test_that('create_bulk_delete_file produces bulk_delete file', {
   bulk_delete_file_contents <- readLines(bulk_delete_file)
   file.remove(bulk_delete_file)
 
-  expected_delete_file <- c('{"delete": {"_index": "iris", "_type": "data", "_id": "1"}}',
-                            '{"delete": {"_index": "iris", "_type": "data", "_id": "2"}}')
+  expected_delete_file <- c('{"delete": {"_index": "iris", "_type": "_doc", "_id": "1"}}',
+                            '{"delete": {"_index": "iris", "_type": "_doc", "_id": "2"}}')
 
   expect_equal(expected_delete_file, bulk_delete_file_contents)
 })
@@ -166,9 +167,9 @@ test_that('index_bulk_dataframe correctly indexes a data frame', {
   delete_test_data()
 
   # act
-  index_bulk_dataframe(elastic("http://localhost:9200", "iris", "data"), iris_data)
-  wait_finish_indexing("http://localhost:9200/iris/data/_search?size=150&q=*", 150)
-  query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
+  index_bulk_dataframe(elastic("http://localhost:9200", "iris", "_doc"), iris_data)
+  wait_finish_indexing("http://localhost:9200/iris/_doc/_search?size=150&q=*", 150)
+  query_response <- httr::POST("http://localhost:9200/iris/_doc/_search?size=150&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
   query_results <- query_results[order(query_results$sort_key), ]
   row.names(query_results) <- query_results$sort_key
@@ -190,9 +191,9 @@ test_that('index_bulk_dataframe correctly detects and assigns document ids', {
   colnames(iris_data_ids) <- c(colnames(iris_data_ids)[1:5], "id")
 
   # act
-  index_bulk_dataframe(elastic("http://localhost:9200", "iris", "data"), iris_data_ids)
-  wait_finish_indexing("http://localhost:9200/iris/data/_search?size=150&q=*", 150)
-  query_response <- httr::GET("http://localhost:9200/iris/data/150")
+  index_bulk_dataframe(elastic("http://localhost:9200", "iris", "_doc"), iris_data_ids)
+  wait_finish_indexing("http://localhost:9200/iris/_doc/_search?size=150&q=*", 150)
+  query_response <- httr::GET("http://localhost:9200/iris/_doc/150")
   query_results <- data.frame(
     jsonlite::fromJSON(httr::content(query_response, as = 'text'))$`_source`,
     stringsAsFactors = FALSE
@@ -215,7 +216,7 @@ test_that('from_size_search retrieves query results from Elasticsearch', {
   query <- '{"size": 150, "query": {"match_all": {}}}'
 
   # act
-  query_results <- from_size_search(list("search_url" = "http://localhost:9200/iris/data/_search"),
+  query_results <- from_size_search(list("search_url" = "http://localhost:9200/iris/_doc/_search"),
                                     query)
 
   query_results_sorted <- query_results[order(query_results["sort_key"]), ]
@@ -238,7 +239,7 @@ test_that('from_size_search retrieves aggregation results from Elasticsearch', {
     "aggs":{"avg_sepal_width":{"avg":{"field":"sepal_width"}}}}}}'
 
   # act
-  aggs_results <- from_size_search(list("search_url" = "http://localhost:9200/iris/data/_search"),
+  aggs_results <- from_size_search(list("search_url" = "http://localhost:9200/iris/_doc/_search"),
                                     aggs)
 
   # assert
@@ -258,7 +259,7 @@ test_that('scroll_search retrieves query results from Elasticsearch', {
 
   # act
   query_results <- scroll_search(list("cluster_url" = "http://localhost:9200",
-                                      "search_url" = "http://localhost:9200/iris/data/_search"),
+                                      "search_url" = "http://localhost:9200/iris/_doc/_search"),
                                  query)
 
   query_results_sorted <- query_results[order(query_results["sort_key"]), ]

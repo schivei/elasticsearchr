@@ -4,10 +4,10 @@
 \alias{\%index\%}
 \title{Index a data frame.}
 \usage{
-rescource \%index\% df
+resource \%index\% df
 }
 \arguments{
-\item{rescource}{An \code{elastic_rescource} object that contains the information on the
+\item{resource}{An \code{elastic_resource} object that contains the information on the
 Elasticsearch cluster, index and document type, where the indexed data will reside. If this does
 not already exist, it will be created automatically.}
 

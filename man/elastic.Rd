@@ -4,7 +4,7 @@
 \alias{elastic}
 \title{elastic_resource class constructor.}
 \usage{
-elastic(cluster_url, index, doc_type = NULL)
+elastic(cluster_url, index = NULL, doc_type = NULL)
 }
 \arguments{
 \item{cluster_url}{URL to the Elastic cluster.}
@@ -14,7 +14,7 @@ elastic(cluster_url, index, doc_type = NULL)
 \item{doc_type}{[optional] The name of a document type within the index.}
 }
 \value{
-An \code{elastic_rescource} object.
+An \code{elastic_resource} object.
 }
 \description{
 Objects of this class contain all of the information required to locate documents in an

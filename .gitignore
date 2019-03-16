@@ -3,3 +3,9 @@
 .RData
 inst/doc
 *.html
+*.suo
+/.vs/ProjectSettings.json
+/.vs/slnx.sqlite
+/.vs/VSWorkspaceState.json
+/elasticsearchr.sln.DotSettings.user
+/lib

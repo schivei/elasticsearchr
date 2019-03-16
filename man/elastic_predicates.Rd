@@ -3,7 +3,7 @@
 \name{elastic_predicates}
 \alias{elastic_predicates}
 \alias{is_elastic}
-\alias{is_elastic_rescource}
+\alias{is_elastic_resource}
 \alias{is_elastic_api}
 \alias{is_elastic_query}
 \alias{is_elastic_aggs}
@@ -14,7 +14,7 @@
 \usage{
 is_elastic(x)
 
-is_elastic_rescource(x)
+is_elastic_resource(x)
 
 is_elastic_api(x)
 

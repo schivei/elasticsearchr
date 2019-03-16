@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 context('api')
-
+source("./helper-elasticsearch_test_data.R")
 
 # ---- classes, methods and predicates ------------------------------------------------------------
 
@@ -25,7 +24,7 @@ test_that('elastic objects have the correct classes assigned to them', {
   skip_on_cran()
 
   # arrange
-  es_rescource <- elastic("http://localhost:9200", "iris", "data")
+  es_rescource <- elastic("http://localhost:9200", "iris", "_doc")
 
   # act
   elastic_classes <- class(es_rescource)
@@ -41,7 +40,7 @@ test_that('elastic objects correctly assemble search URLs when doc_types are spe
   skip_on_cran()
 
   # arrange
-  es_rescource <- elastic("http://localhost:9200", "iris", "data")
+  es_rescource <- elastic("http://localhost:9200", "iris", "_doc")
 
   # act
   search_url <- es_rescource$search_url
@@ -240,7 +239,7 @@ test_that('%info% list_indices() returns a list of all available indices', {
   load_test_data()
 
   # act
-  info_results <- elastic("http://localhost:9200", "iris", "data") %info% list_indices()
+  info_results <- elastic("http://localhost:9200", "iris", "_doc") %info% list_indices()
 
   # assert
   expect_equal(info_results, "iris")
@@ -257,12 +256,44 @@ test_that('%info% list_fields() returns a list of all fields in an index', {
   load_test_data()
 
   # act
-  info_results <- elastic("http://localhost:9200", "iris", "data") %info% list_fields()
+  info_results <- elastic("http://localhost:9200", "iris", "_doc") %info% list_fields()
 
   # assert
   expected_fields <- c("petal_length", "petal_width", "sepal_length", "sepal_width", "sort_key", "species")
   expect_equal(info_results, expected_fields)
   delete_test_data()
+})
+
+
+test_that('%info% es_version() returns a list of major, minor and build version of elasticsearch', {
+  # skip if on CRAN or Travis
+  skip_on_travis()
+  skip_on_cran()
+
+  # act
+  version <- elastic("http://localhost:9200", "iris", "_doc") %info% es_version()
+
+  # assert
+  expect_type(version$major, "integer")
+  expect_type(version$minor, "integer")
+  expect_type(version$build, "integer")
+})
+
+
+test_that('elastic_bulk_size get and set bulk size', {
+  # skip if on CRAN or Travis
+  skip_on_travis()
+  skip_on_cran()
+
+  # act
+  currentSize <- elastic_bulk_size()
+  elastic_bulk_size(100)
+  newSize <- elastic_bulk_size()
+
+  # assert
+  expect_equal(1000, currentSize)
+  expect_equal(100, newSize)
+  elastic_bulk_size(currentSize)
 })
 
 
@@ -280,7 +311,7 @@ test_that('%index% correctly indexes a large (>10mb single chunk) data frame', {
   colnames(iris_data_bulk) <- cleaned_field_names(colnames(iris_data_bulk))
 
   # act
-  elastic("http://localhost:9200", "iris", "data") %index% iris_data_bulk
+  elastic("http://localhost:9200", "iris", "_doc") %index% iris_data_bulk
   wait_finish_indexing("http://localhost:9200/iris/data/_search?size=7500&q=*", nrow(iris_data_bulk))
   query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=7500&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
@@ -302,7 +333,7 @@ test_that('%create% can create an index with a custom mapping', {
   delete_test_data()
 
   # act
-  elastic("http://localhost:9200", "iris") %create% mapping_default_simple()
+  elastic("http://localhost:9200", "iris") %create% mapping_default_simple("http://localhost:9200")
   get_mapping <- httr::GET("http://localhost:9200/iris/_mapping")
   get_mapping_status <- httr::status_code(get_mapping)
 
@@ -341,7 +372,7 @@ test_that('%delete% can delete all documents from a type', {
   load_test_data()
 
   # act
-  elastic("http://localhost:9200", "iris", "data") %delete% TRUE
+  elastic("http://localhost:9200", "iris", "_doc") %delete% TRUE
   wait_finish_delete("http://localhost:9200/iris/data/_search?size=150&q=*")
   query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
@@ -366,7 +397,7 @@ test_that('%delete% can delete selected documents from a type', {
   doc_ids <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_id`
 
   # act
-  elastic("http://localhost:9200", "iris", "data") %delete% doc_ids
+  elastic("http://localhost:9200", "iris", "_doc") %delete% doc_ids
   wait_finish_delete("http://localhost:9200/iris/data/_search?size=150&q=*")
   query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
@@ -391,7 +422,7 @@ test_that('we can query using the %search% operator and return all documents', {
   es_query <- query(everything)
 
   # act
-  query_results <- elastic("http://localhost:9200", "iris", "data") %search% es_query
+  query_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_query
 
   query_results_sorted <- query_results[order(query_results["sort_key"]), ]
   rownames(query_results_sorted) <- query_results_sorted$sort_key
@@ -414,7 +445,7 @@ test_that('we can query using the %search% operator and return documents sorted'
   es_query <- query(everything, size = 10) + sort_on(by_key)
 
   # act
-  query_results <- elastic("http://localhost:9200", "iris", "data") %search% es_query
+  query_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_query
 
   query_results_sorted <- query_results[order(query_results["sort_key"]), ]
   rownames(query_results_sorted) <- query_results_sorted$sort_key
@@ -440,7 +471,7 @@ test_that('we can query using the %search% operator and return a subset of field
 
   # act
   query_results <-
-    elastic("http://localhost:9200", "iris", "data") %search% (es_query + es_source_filter)
+    elastic("http://localhost:9200", "iris", "_doc") %search% (es_query + es_source_filter)
 
   query_results_sorted <- query_results[order(query_results["sort_key"]), fields]
   rownames(query_results_sorted) <- query_results_sorted$sort_key
@@ -469,7 +500,7 @@ test_that('we can query using the %search% operator and return a sorted subset o
 
   # act
   query_results <-
-    elastic("http://localhost:9200", "iris", "data") %search% (es_query + es_filter_and_sort)
+    elastic("http://localhost:9200", "iris", "_doc") %search% (es_query + es_filter_and_sort)
 
   rownames(query_results) <- 1:150
 
@@ -495,7 +526,7 @@ test_that('we can use bucket aggregations using the %search% operator', {
   es_aggs <- aggs(avg_sepal_width_per_cat)
 
   # act
-  aggs_results <- elastic("http://localhost:9200", "iris", "data") %search% es_aggs
+  aggs_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_aggs
 
   # assert
   expect_equal(aggs_results, iris_test_aggs_bucket)
@@ -514,7 +545,7 @@ test_that('we can use base-metric aggregations using the %search% operator', {
   es_aggs <- aggs(avg_sepal_width_per_cat)
 
   # act
-  aggs_results <- elastic("http://localhost:9200", "iris", "data") %search% es_aggs
+  aggs_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_aggs
 
   # assert
   expect_equal(aggs_results, iris_test_aggs_metric)
@@ -538,7 +569,7 @@ test_that('we can query + sort using the %search% operator', {
   es_query_sorted <- es_query + es_sort
 
   # act
-  query_results <- elastic("http://localhost:9200", "iris", "data") %search% es_query_sorted
+  query_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_query_sorted
   rownames(query_results) <- 1:150
 
   # assert
@@ -569,7 +600,7 @@ test_that('we can query + aggregate using the %search% operator', {
   es_agg_on_query <- es_query + es_agg
 
   # act
-  aggs_results <- elastic("http://localhost:9200", "iris", "data") %search% es_agg_on_query
+  aggs_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_agg_on_query
 
   # assert
   expect_equal(aggs_results, iris_test_aggs_bucket)
