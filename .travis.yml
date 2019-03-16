@@ -5,13 +5,6 @@ language: r
 r_packages:
   - rmarkdown
   - covr
-  - testthat
-  - knitr
-  - httr,
-  - jsonlite,
-  - doParallel,
-  - dplyr,
-  - DT
 
 after_success:
   - Rscript -e 'library(covr);codecov()'
