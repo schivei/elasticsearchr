@@ -112,11 +112,12 @@ bulk_size <- 1000
 #' elastic_bulk_size(100)
 elastic_bulk_size <- function(size = NULL) {
   if (!is.null(size)) {
-    stopifnot(is.integer(size), size >= 1, size <= 5000)
+    size <- as.integer(size)
+    stopifnot(size >= 1, size <= 5000)
     bulk_size <- size
-    NULL
+    return(NULL)
   } else {
-    bulk_size
+    return(bulk_size)
   }
 }
 
