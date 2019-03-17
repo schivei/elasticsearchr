@@ -111,7 +111,7 @@ bulk_size <- 1000
 #' @examples
 #' elastic_bulk_size(100)
 elastic_bulk_size <- function(size = NULL) {
-  if (!is.null) {
+  if (!is.null(size)) {
     stopifnot(is.integer(size), size >= 1, size <= 5000)
     bulk_size <- size
     NULL
@@ -243,7 +243,6 @@ list_indices <- function() {
 #'
 #' @export
 #'
-#' @param url A valid URL to an Elasticsearch cluster.
 #' @return A list with the \code{major}, \code{minor} and \code{build} numbers.
 #'
 #' @examples
