@@ -2,6 +2,43 @@ sudo: required
 
 language: r
 
+env:
+  matrix:
+  - ES_VERSION=2.4.6
+  - ES_VERSION=5.6.15
+  - ES_VERSION=6.6.0
+  - ES_VERSION=7.0.0-beta1
+
+before_install:
+  - sudo dpkg -r elasticsearch
+  - case "$ES_VERSION" in
+    "") ;;
+
+    "2.4.6")
+      export ES_VERSION=2.4.6 ;
+      curl -O https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/$ES_VERSION/elasticsearch-$ES_VERSION.deb && sudo dpkg -i --force-confnew elasticsearch-$ES_VERSION.deb && sudo service elasticsearch start
+      ;;
+
+    "5.6.15")
+      export ES_VERSION=5.6.15 ;
+      curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$ES_VERSION.deb && sudo dpkg -i --force-confnew elasticsearch-$ES_VERSION.deb && sudo service elasticsearch start
+      ;;
+
+    "6.6.0")
+      export ES_VERSION=6.6.0 ;
+      curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$ES_VERSION.deb && sudo dpkg -i --force-confnew elasticsearch-$ES_VERSION.deb && sudo service elasticsearch start
+      ;;
+
+    "7.0.0-beta1")
+      export ES_VERSION=7.0.0-beta1 ;
+      curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$ES_VERSION-amd64.deb && sudo dpkg -i --force-confnew elasticsearch-$ES_VERSION-amd64.deb && sudo service elasticsearch start
+      ;;
+   esac
+before_script:
+  - sleep 2m
+  # Outputs info about ES, including version number. Useful for debugging.
+  - curl localhost:9200
+
 r_packages:
   - rmarkdown
   - covr
