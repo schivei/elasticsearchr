@@ -4,7 +4,7 @@
 \alias{mapping_default_simple}
 \title{Simple Elasticsearch default mappings for non-text-search analytics}
 \usage{
-mapping_default_simple()
+mapping_default_simple(url = NULL)
 }
 \description{
 This mapping switches-off the text analyser for all fields of type 'string' (i.e. switches off

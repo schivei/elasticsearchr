@@ -20,6 +20,6 @@ entire index (if the document type is unspecified.)
 }
 \examples{
 \dontrun{
-elastic("http://localhost:9200", "iris", "data") \%delete\% TRUE
+elastic("http://localhost:9200", "iris", "_doc") \%delete\% TRUE
 }
 }

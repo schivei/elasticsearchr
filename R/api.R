@@ -72,7 +72,7 @@ is_elastic_info <- function(x) inherits(x, "elastic_info")
 #'
 #' @examples
 #' \dontrun{
-#' my_data <- elastic("http://localhost:9200", "iris", "data")
+#' my_data <- elastic("http://localhost:9200", "iris", "_doc")
 #' }
 elastic <- function(cluster_url, index = NULL, doc_type = NULL) {
   stopifnot(is.character(cluster_url), is.character(index) | is.null(index), is.character(doc_type) | is.null(doc_type),
@@ -286,8 +286,8 @@ es_version <- function() {
 #'
 #' @examples
 #' \dontrun{
-#' elastic("http://localhost:9200", "iris", "data") %info% list_indices()
-#' elastic("http://localhost:9200", "iris", "data") %info% list_fields()
+#' elastic("http://localhost:9200", "iris", "_doc") %info% list_indices()
+#' elastic("http://localhost:9200", "iris", "_doc") %info% list_fields()
 #' elastic("http://localhost:9200") %info% version()
 #' }
 `%info%` <- function(resource, info) UseMethod("%info%")
@@ -320,7 +320,7 @@ es_version <- function() {
 #'
 #' @examples
 #' \dontrun{
-#' elastic("http://localhost:9200", "iris", "data") %index% iris
+#' elastic("http://localhost:9200", "iris", "_doc") %index% iris
 #' }
 `%index%` <- function(resource, df) UseMethod("%index%")
 
@@ -363,7 +363,7 @@ es_version <- function() {
 #'
 #' @examples
 #' \dontrun{
-#' elastic("http://localhost:9200", "iris", "data") %create% mapping_default_simple()
+#' elastic("http://localhost:9200", "iris", "_doc") %create% mapping_default_simple()
 #' }
 `%create%` <- function(resource, mapping) UseMethod("%create%")
 
@@ -391,7 +391,7 @@ es_version <- function() {
 #'
 #' @examples
 #' \dontrun{
-#' elastic("http://localhost:9200", "iris", "data") %delete% TRUE
+#' elastic("http://localhost:9200", "iris", "_doc") %delete% TRUE
 #' }
 `%delete%` <- function(resource, approve) UseMethod("%delete%")
 
@@ -451,7 +451,7 @@ es_version <- function() {
 #'
 #' @examples
 #' \dontrun{
-#' results <- elastic("http://localhost:9200", "iris", "data") %search% query('{"match_all": {}}')
+#' results <- elastic("http://localhost:9200", "iris", "_doc") %search% query('{"match_all": {}}')
 #' head(results)
 #' #   sepal_length sepal_width petal_length petal_width species
 #' # 1          4.8         3.0          1.4         0.1  setosa

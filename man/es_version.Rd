@@ -6,9 +6,6 @@
 \usage{
 es_version()
 }
-\arguments{
-\item{url}{A valid URL to an Elasticsearch cluster.}
-}
 \value{
 A list with the \code{major}, \code{minor} and \code{build} numbers.
 }

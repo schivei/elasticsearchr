@@ -24,7 +24,7 @@ Otherwise, Elasticsearch will automatically assigne the documents random ids.
 }
 \examples{
 \dontrun{
-elastic("http://localhost:9200", "iris", "data") \%index\% iris
+elastic("http://localhost:9200", "iris", "_doc") \%index\% iris
 }
 }
 \seealso{

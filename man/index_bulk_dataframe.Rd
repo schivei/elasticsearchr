@@ -21,7 +21,7 @@ Bulk API (and hence the split into smaller more manageable chunks).
 }
 \examples{
 \dontrun{
-rescource <- elastic("http://localhost:9200", "iris", "data")
+rescource <- elastic("http://localhost:9200", "iris", "_doc")
 index_bulk_dataframe(rescource, iris)
 }
 }

@@ -152,9 +152,9 @@ cleaned_field_names <- function(colnames) {
 #'
 #' @examples
 #' \dontrun{
-#' create_metadata("index", "iris", "data", n = 2)
-#' '{\"index\": {\"_index\": \"iris\", \"_type\": \"data\"}}'
-#' '{\"index\": {\"_index\": \"iris\", \"_type\": \"data\"}}'
+#' create_metadata("index", "iris", "_doc", n = 2)
+#' '{\"index\": {\"_index\": \"iris\", \"_type\": \"_doc\"}}'
+#' '{\"index\": {\"_index\": \"iris\", \"_type\": \"_doc\"}}'
 #' }
 create_metadata <- function(action, index, doc_type, id = NULL, n = NULL) {
   stopifnot(action %in% c("index", "create", "update", "delete"))
@@ -188,11 +188,11 @@ create_metadata <- function(action, index, doc_type, id = NULL, n = NULL) {
 #'
 #' @examples
 #' \dontrun{
-#' bulk_upload_info <- create_metadata("index", "iris", "data", n = nrow(iris))
+#' bulk_upload_info <- create_metadata("index", "iris", "_doc", n = nrow(iris))
 #' create_bulk_upload_file(bulk_upload_info, iris)
 #' # "/var/folders/__/yz_l30s48xj6m_0059b_2twr0000gn/T//RtmpQnvUOt/file98194322b8"
 #'
-#' bulk_delete_info <- create_metadata("delete", "iris", "data", n = nrow(iris))
+#' bulk_delete_info <- create_metadata("delete", "iris", "_doc", n = nrow(iris))
 #' create_bulk_delete_file(bulk_delete_info)
 #' # "/var/folders/__/yz_l30s48xj6m_0059b_2twr0000gn/T//RtmpQnvUOt/file98194322b8"
 #' }
@@ -246,7 +246,7 @@ create_bulk_delete_file <- function(metadata) {
 #'
 #' @examples
 #' \dontrun{
-#' rescource <- elastic("http://localhost:9200", "iris", "data")
+#' rescource <- elastic("http://localhost:9200", "iris", "_doc")
 #' index_bulk_dataframe(rescource, iris)
 #' }
 index_bulk_dataframe <- function(rescource, df) {
@@ -299,7 +299,7 @@ index_bulk_dataframe <- function(rescource, df) {
 #'
 #' @examples
 #' \dontrun{
-#' elastic_rescource <- elastic("http://localhost:9200", "iris", "data")
+#' elastic_rescource <- elastic("http://localhost:9200", "iris", "_doc")
 #' query_json <- '{"query": {"match_all": {}}}'
 #' results <- from_size_search(elastic_rescource, query_json)
 #' head(results)
@@ -353,7 +353,7 @@ from_size_search <- function(rescource, api_call_payload) {
 #'
 #' @examples
 #' \dontrun{
-#' elastic_rescource <- elastic("http://localhost:9200", "iris", "data")
+#' elastic_rescource <- elastic("http://localhost:9200", "iris", "_doc")
 #' query_json <- '{"query": {"match_all": {}}}'
 #' results <- scroll_search(elastic_rescource, query_json)
 #' head(results)

@@ -20,7 +20,7 @@ infer the type of each field based on the first document indexed.
 }
 \examples{
 \dontrun{
-elastic("http://localhost:9200", "iris", "data") \%create\% mapping_default_simple()
+elastic("http://localhost:9200", "iris", "_doc") \%create\% mapping_default_simple()
 }
 }
 \seealso{

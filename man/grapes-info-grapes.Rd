@@ -18,8 +18,8 @@ An operator to be used with requests for information
 }
 \examples{
 \dontrun{
-elastic("http://localhost:9200", "iris", "data") \%info\% list_indices()
-elastic("http://localhost:9200", "iris", "data") \%info\% list_fields()
+elastic("http://localhost:9200", "iris", "_doc") \%info\% list_indices()
+elastic("http://localhost:9200", "iris", "_doc") \%info\% list_fields()
 elastic("http://localhost:9200") \%info\% version()
 }
 }

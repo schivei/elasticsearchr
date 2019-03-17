@@ -26,7 +26,7 @@ is particularly well suited to returning aggregation results.
 }
 \examples{
 \dontrun{
-elastic_rescource <- elastic("http://localhost:9200", "iris", "data")
+elastic_rescource <- elastic("http://localhost:9200", "iris", "_doc")
 query_json <- '{"query": {"match_all": {}}}'
 results <- from_size_search(elastic_rescource, query_json)
 head(results)

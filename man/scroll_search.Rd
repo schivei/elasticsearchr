@@ -31,7 +31,7 @@ suited to returning large query results.
 }
 \examples{
 \dontrun{
-elastic_rescource <- elastic("http://localhost:9200", "iris", "data")
+elastic_rescource <- elastic("http://localhost:9200", "iris", "_doc")
 query_json <- '{"query": {"match_all": {}}}'
 results <- scroll_search(elastic_rescource, query_json)
 head(results)

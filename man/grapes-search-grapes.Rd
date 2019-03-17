@@ -21,7 +21,7 @@ Execute query or search.
 }
 \examples{
 \dontrun{
-results <- elastic("http://localhost:9200", "iris", "data") \%search\% query('{"match_all": {}}')
+results <- elastic("http://localhost:9200", "iris", "_doc") \%search\% query('{"match_all": {}}')
 head(results)
 #   sepal_length sepal_width petal_length petal_width species
 # 1          4.8         3.0          1.4         0.1  setosa

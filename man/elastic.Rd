@@ -22,6 +22,6 @@ Elasticsearch cluster.
 }
 \examples{
 \dontrun{
-my_data <- elastic("http://localhost:9200", "iris", "data")
+my_data <- elastic("http://localhost:9200", "iris", "_doc")
 }
 }

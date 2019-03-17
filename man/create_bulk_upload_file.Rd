@@ -25,11 +25,11 @@ This is ready to be POSTed to the Bulk API.
 }
 \examples{
 \dontrun{
-bulk_upload_info <- create_metadata("index", "iris", "data", n = nrow(iris))
+bulk_upload_info <- create_metadata("index", "iris", "_doc", n = nrow(iris))
 create_bulk_upload_file(bulk_upload_info, iris)
 # "/var/folders/__/yz_l30s48xj6m_0059b_2twr0000gn/T//RtmpQnvUOt/file98194322b8"
 
-bulk_delete_info <- create_metadata("delete", "iris", "data", n = nrow(iris))
+bulk_delete_info <- create_metadata("delete", "iris", "_doc", n = nrow(iris))
 create_bulk_delete_file(bulk_delete_info)
 # "/var/folders/__/yz_l30s48xj6m_0059b_2twr0000gn/T//RtmpQnvUOt/file98194322b8"
 }

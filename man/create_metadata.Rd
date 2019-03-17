@@ -29,9 +29,9 @@ responsible for generating.
 }
 \examples{
 \dontrun{
-create_metadata("index", "iris", "data", n = 2)
-'{\\"index\\": {\\"_index\\": \\"iris\\", \\"_type\\": \\"data\\"}}'
-'{\\"index\\": {\\"_index\\": \\"iris\\", \\"_type\\": \\"data\\"}}'
+create_metadata("index", "iris", "_doc", n = 2)
+'{\\"index\\": {\\"_index\\": \\"iris\\", \\"_type\\": \\"_doc\\"}}'
+'{\\"index\\": {\\"_index\\": \\"iris\\", \\"_type\\": \\"_doc\\"}}'
 }
 }
 \seealso{
