@@ -30,11 +30,6 @@ before_install:
       export ES_VERSION=6.6.0 ;
       curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$ES_VERSION.deb && sudo dpkg -i --force-confnew elasticsearch-$ES_VERSION.deb && sudo service elasticsearch start
       ;;
-
-    "7.0.0~beta1")
-      export ES_VERSION=7.0.0~beta1 ;
-      curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.0.0-beta1-amd64.deb && sudo dpkg -i --force-confnew elasticsearch-$ES_VERSION-beta1-amd64.deb && sudo service elasticsearch start
-      ;;
    esac
 before_script:
   - sleep 2m
