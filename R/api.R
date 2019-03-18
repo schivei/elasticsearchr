@@ -90,7 +90,7 @@ elastic <- function(cluster_url, index = NULL, doc_type = NULL) {
     valid_search_endpoint <- paste0(valid_index_url, "/_search")
   } else {
     version <- elastic(cluster_url) %info% es_version()
-    if (version$major < 7) {
+    if (version$major >= 7) {
       doc_type = NULL
     }
 
@@ -239,7 +239,7 @@ list_fields <- function() {
   process_response <- function(response, resource) {
     version <- elastic_version(resource$cluster_url)
     index_mapping <- httr::content(response, as = "parsed")
-    fields <- if (version$major < 7) names(index_mapping[[1]]$mappings$data$properties) else names(index_mapping[[1]]$mappings$properties)
+    fields <- if (version$major < 7) names(index_mapping[[1]]$mappings[, resource$doc_type]$properties) else names(index_mapping[[1]]$mappings$properties)
     fields
   }
 
