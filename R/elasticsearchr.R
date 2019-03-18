@@ -20,9 +20,4 @@
 #' @docType package
 #' @name elasticsearchr
 
-library(doParallel)
-cl <- makeCluster(detectCores())
-registerDoParallel(cl)
-stopCluster(cl)
-
 NULL

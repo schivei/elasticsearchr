@@ -19,7 +19,7 @@ source("./helper-elasticsearch_test_data.R")
 
 test_that('valid_connection identifies valid URLs to Elasticsearch rescources', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -35,11 +35,11 @@ test_that('valid_connection identifies valid URLs to Elasticsearch rescources', 
 
 test_that('valid_connection identifies invalid URLs to Elasticsearch rescources', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
-  url <- "localhost:9201"
+  url <- "localhost:1234"
 
   # act & assert
   expect_error(valid_connection(url))
@@ -48,7 +48,7 @@ test_that('valid_connection identifies invalid URLs to Elasticsearch rescources'
 
 test_that('elastic_version returns the Elasticsearch version number', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -160,7 +160,7 @@ test_that('create_bulk_delete_file produces bulk_delete file', {
 
 test_that('index_bulk_dataframe correctly indexes a data frame', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -168,7 +168,7 @@ test_that('index_bulk_dataframe correctly indexes a data frame', {
 
   # act
   index_bulk_dataframe(elastic("http://localhost:9200", "iris", "_doc"), iris_data)
-  wait_finish_indexing("http://localhost:9200/iris/_doc/_search?size=150&q=*", 150)
+  wait_finish_indexing("http://localhost:9200/iris/_doc/_count", 150)
   query_response <- httr::POST("http://localhost:9200/iris/_doc/_search?size=150&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
   query_results <- query_results[order(query_results$sort_key), ]
@@ -182,17 +182,16 @@ test_that('index_bulk_dataframe correctly indexes a data frame', {
 
 test_that('index_bulk_dataframe correctly detects and assigns document ids', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
-  delete_test_data()
   iris_data_ids <- iris_data
   colnames(iris_data_ids) <- c(colnames(iris_data_ids)[1:5], "id")
 
   # act
   index_bulk_dataframe(elastic("http://localhost:9200", "iris", "_doc"), iris_data_ids)
-  wait_finish_indexing("http://localhost:9200/iris/_doc/_search?size=150&q=*", 150)
+  wait_finish_indexing("http://localhost:9200/iris/_count", 150)
   query_response <- httr::GET("http://localhost:9200/iris/_doc/150")
   query_results <- data.frame(
     jsonlite::fromJSON(httr::content(query_response, as = 'text'))$`_source`,
@@ -208,7 +207,7 @@ test_that('index_bulk_dataframe correctly detects and assigns document ids', {
 
 test_that('from_size_search retrieves query results from Elasticsearch', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -230,7 +229,7 @@ test_that('from_size_search retrieves query results from Elasticsearch', {
 
 test_that('from_size_search retrieves aggregation results from Elasticsearch', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -250,7 +249,7 @@ test_that('from_size_search retrieves aggregation results from Elasticsearch', {
 
 test_that('scroll_search retrieves query results from Elasticsearch', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -259,7 +258,7 @@ test_that('scroll_search retrieves query results from Elasticsearch', {
 
   # act
   query_results <- scroll_search(list("cluster_url" = "http://localhost:9200",
-                                      "search_url" = "http://localhost:9200/iris/_doc/_search"),
+                                      "search_url" = "http://localhost:9200/iris/_search"),
                                  query)
 
   query_results_sorted <- query_results[order(query_results["sort_key"]), ]

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # ---- classes, methods and predicates ------------------------------------------------------------
 
 
@@ -90,13 +89,21 @@ elastic <- function(cluster_url, index = NULL, doc_type = NULL) {
   } else if (is.null(doc_type)) {
     valid_search_endpoint <- paste0(valid_index_url, "/_search")
   } else {
-    valid_search_endpoint <- paste0(valid_index_url, "/", doc_type, "/_search")
+    version <- elastic(cluster_url) %info% es_version()
+    if (version$major < 7) {
+      doc_type = NULL
+    }
+
+    if (is.null(doc_type)) {
+      valid_search_endpoint <- paste0(valid_index_url, "/_search")
+    } else {
+      valid_search_endpoint <- paste0(valid_index_url, "/", doc_type, "/_search")
+    }
   }
 
   structure(list("search_url" = valid_search_endpoint, "cluster_url" = cluster_url,
                  "index" = index, "doc_type" = doc_type), class = c("elastic_resource", "elastic"))
 }
-
 
 bulk_size <- 1000
 
@@ -114,13 +121,31 @@ elastic_bulk_size <- function(size = NULL) {
   if (!is.null(size)) {
     size <- as.integer(size)
     stopifnot(size >= 1, size <= 5000)
-    bulk_size <- size
+    bulk_size <<- size
     return(NULL)
   } else {
     return(bulk_size)
   }
 }
 
+use_parallel <- TRUE
+
+#' Get or Set the elasticsearch parallel index.
+#'
+#' @export
+#'
+#' @param parallel boolean The indicator of parallel use.
+#'
+#' @examples
+#' elastic_parallel_index(TRUE)
+elastic_parallel_index <- function(parallel = NULL) {
+  if (!is.null(parallel)) {
+    use_parallel <<- parallel == TRUE
+    return(NULL)
+  } else {
+    return(use_parallel == TRUE)
+  }
+}
 
 #' Define Elasticsearch query.
 #'
@@ -210,10 +235,11 @@ aggs <- function(json) {
 #' list_fields()
 list_fields <- function() {
   endpoint <- "/_mapping"
-
-  process_response <- function(response) {
+  
+  process_response <- function(response, resource) {
+    version <- elastic_version(resource$cluster_url)
     index_mapping <- httr::content(response, as = "parsed")
-    fields <- names(index_mapping[[1]]$mappings$data$properties)
+    fields <- if (version$major < 7) names(index_mapping[[1]]$mappings$data$properties) else names(index_mapping[[1]]$mappings$properties)
     fields
   }
 
@@ -232,7 +258,7 @@ list_fields <- function() {
 #' list_indices()
 list_indices <- function() {
   endpoint <- "/_mapping"
-  process_response <- function(response) names(httr::content(response, as = "parsed"))
+  process_response <- function(response, resource) names(httr::content(response, as = "parsed"))
   structure(list("endpoint" = endpoint, "process_response" = process_response),
             class = c("elastic_info", "elastic_api", "elastic"))
 }
@@ -260,10 +286,10 @@ list_indices <- function() {
 #' }
 es_version <- function() {
   endpoint <- "/"
-  process_response <- function(response) {
+  process_response <- function(response, resource) {
     check_http_code_throw_error(response)
     version <- strsplit(strsplit(httr::content(response, as = "parsed")$version$number[1], "-")[[1]][1], "\\.")[[1]]
-    list("major" = version[1], "minor" = version[2], "build" = version[3])
+    list("major" = as.integer(version[1]), "minor" = as.integer(version[2]), "build" = as.integer(version[3]))
   }
   structure(list("endpoint" = endpoint, "process_response" = process_response),
             class = c("elastic_info", "elastic_api", "elastic"))
@@ -295,9 +321,10 @@ es_version <- function() {
 #' @export
 `%info%.elastic_resource` <- function(resource, info) {
   stopifnot(is_elastic_resource(resource), is_elastic_info(info))
-  api_call <- paste0(resource$cluster_url, info$endpoint)
+  appending <- if (is.null(resource$index)) "" else paste0("/", resource$index)
+  api_call <- paste0(resource$cluster_url, appending, info$endpoint)
   response <- httr::GET(api_call)
-  info$process_response(response)
+  info$process_response(response, resource)
 }
 
 #' Index a data frame.
@@ -326,20 +353,28 @@ es_version <- function() {
 
 #' @export
 `%index%.elastic_resource` <- function(resource, df) {
-  stopifnot(is_elastic_resource(resource), is.data.frame(df), !is.null(resource$doc_type))
+  version <- elastic(resource$cluster_url) %info% es_version()
+  stopifnot(is_elastic_resource(resource), is.data.frame(df), version$major >= 7 || !is.null(resource$doc_type))
   colnames(df) <- cleaned_field_names(colnames(df))
 
-  num_rows_per_chunk <- ceiling(nrow(df) / bulk_size) # bulk n documents per request to optimize bulk
+  num_rows_per_chunk <- bulk_size # bulk n documents per request to optimize bulk
   chunk_indices <- lapply(X = seq(1, nrow(df), num_rows_per_chunk),
                           FUN = function(x) c(x, min(nrow(df), x + num_rows_per_chunk - 1)))
 
-  # starts parallel to pereform requests
-  cl <- makeCluster(detectCores())
-  registerDoParallel(cl)
-  stopCluster(cl)
+  if (bulk_size > nrow(df)) {
+    index_bulk_dataframe(resource, df)
+  } else if (use_parallel == TRUE) {
+    # starts parallel to pereform requests
+    library(doParallel)
 
-  binds <- foreach(cl = cl, i = chunk_indices, .combine = rbind) %do% {
-    index_bulk_dataframe(resource, df[i[[1]],])
+    cl <- makeCluster(detectCores() * detectCores())
+    registerDoParallel(cl)
+
+    binds <- foreach(cl = cl, i = chunk_indices, .combine = rbind) %do% {
+      index_bulk_dataframe(resource, df[i[[1]]:i[[2]],])
+    }
+  } else {
+    lapply(X = chunk_indices, FUN = function(x) index_bulk_dataframe(resource, df[x[1]:x[2],]))
   }
 
   message("... data successfully indexed", appendLF = FALSE)
@@ -397,14 +432,15 @@ es_version <- function() {
 
 #' @export
 `%delete%.elastic_resource` <- function(resource, approve) {
-  if (is.character(approve) & is.vector(approve)) {
+  if (is.character(approve) & is.vector(approve) & approve != "") {
     ids <- approve
   } else {
-    if (is.character(approve)) {
-      query <- if (approve != "") approve else '{"query": {"match_all": {}}}'
+    if (is.character(approve) & approve != "") {
+      query <- approve
       ids <- NULL
     } else if (approve != TRUE) {
-      stop("please approve deletion")
+      query <- '{"query": {"match_all": {}}}'
+      ids <- NULL
     } else {
       ids <- NULL
       query <- NULL
@@ -412,7 +448,7 @@ es_version <- function() {
   }
 
   if (is.null(ids)) {
-    if (is.null(query)) {
+    if (is.null(query) && approve == TRUE) {
       response <- httr::DELETE(paste(resource$cluster_url, resource$index, sep = "/"))
       check_http_code_throw_error(response)
       message(paste0("... ", resource$index, " has been deleted"))

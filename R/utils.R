@@ -159,13 +159,24 @@ cleaned_field_names <- function(colnames) {
 create_metadata <- function(action, index, doc_type, id = NULL, n = NULL) {
   stopifnot(action %in% c("index", "create", "update", "delete"))
 
-  if (!is.null(id)) {
-    metadata <- paste0('{"', action, '": {"_index": "', index, '", "_type": "', doc_type, '", "_id": "', id, '"}}')
-  } else if (!is.null(n)) {
-    metadata_line <- paste0('{"', action, '": {"_index": "', index, '", "_type": "', doc_type, '"}}')
-    metadata <- rep(metadata_line, n)
+  if (is.null(doc_type)) {
+    if (!is.null(id)) {
+      metadata <- paste0('{"', action, '": {"_index": "', index, '", "_id": "', id, '"}}')
+    } else if (!is.null(n)) {
+      metadata_line <- paste0('{"', action, '": {"_index": "', index, '"}}')
+      metadata <- rep(metadata_line, n)
+    } else {
+      metadata <- paste0('{"', action, '": {"_index": "', index, '"}}')
+    }
   } else {
-    metadata <- paste0('{"', action, '": {"_index": "', index, '", "_type": "', doc_type, '"}}')
+    if (!is.null(id)) {
+      metadata <- paste0('{"', action, '": {"_index": "', index, '", "_type": "', doc_type, '", "_id": "', id, '"}}')
+    } else if (!is.null(n)) {
+      metadata_line <- paste0('{"', action, '": {"_index": "', index, '", "_type": "', doc_type, '"}}')
+      metadata <- rep(metadata_line, n)
+    } else {
+      metadata <- paste0('{"', action, '": {"_index": "', index, '", "_type": "', doc_type, '"}}')
+    }
   }
 
   metadata

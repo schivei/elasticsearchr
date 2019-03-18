@@ -17,49 +17,48 @@ source("./helper-elasticsearch_test_data.R")
 
 # ---- classes, methods and predicates ------------------------------------------------------------
 
-
 test_that('elastic objects have the correct classes assigned to them', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
-  es_rescource <- elastic("http://localhost:9200", "iris", "_doc")
+  es_resource <- elastic("http://localhost:9200", "iris", "_doc")
 
   # act
-  elastic_classes <- class(es_rescource)
+  elastic_classes <- class(es_resource)
 
   # assert
-  expect_identical(elastic_classes, c("elastic_rescource", "elastic"))
+  expect_identical(elastic_classes, c("elastic_resource", "elastic"))
 })
 
 
 test_that('elastic objects correctly assemble search URLs when doc_types are specified', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
-  es_rescource <- elastic("http://localhost:9200", "iris", "_doc")
+  es_resource <- elastic("http://localhost:9200", "iris", "_doc")
 
   # act
-  search_url <- es_rescource$search_url
+  search_url <- es_resource$search_url
 
   # assert
-  expect_identical(search_url, "http://localhost:9200/iris/data/_search")
+  expect_identical(search_url, "http://localhost:9200/iris/_doc/_search")
 })
 
 
 test_that('elastic objects correctly assemble search URLs when doc_types are not specified', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
-  es_rescource <- elastic("http://localhost:9200", "iris")
+  es_resource <- elastic("http://localhost:9200", "iris")
 
   # act
-  search_url <- es_rescource$search_url
+  search_url <- es_resource$search_url
 
   # assert
   expect_identical(search_url, "http://localhost:9200/iris/_search")
@@ -232,7 +231,7 @@ test_that('list_fields objects have the correct classes assigned to them', {
 
 test_that('%info% list_indices() returns a list of all available indices', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -242,21 +241,21 @@ test_that('%info% list_indices() returns a list of all available indices', {
   info_results <- elastic("http://localhost:9200", "iris", "_doc") %info% list_indices()
 
   # assert
-  expect_equal(info_results, "iris")
+  expect_equal("iris" %in% info_results, TRUE)
   delete_test_data()
 })
 
 
 test_that('%info% list_fields() returns a list of all fields in an index', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+
   skip_on_cran()
 
   # arrange
   load_test_data()
 
   # act
-  info_results <- elastic("http://localhost:9200", "iris", "_doc") %info% list_fields()
+  info_results <- elastic("http://localhost:9200", "iris") %info% list_fields()
 
   # assert
   expected_fields <- c("petal_length", "petal_width", "sepal_length", "sepal_width", "sort_key", "species")
@@ -267,11 +266,11 @@ test_that('%info% list_fields() returns a list of all fields in an index', {
 
 test_that('%info% es_version() returns a list of major, minor and build version of elasticsearch', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # act
-  version <- elastic("http://localhost:9200", "iris", "_doc") %info% es_version()
+  version <- elastic("http://localhost:9200") %info% es_version()
 
   # assert
   expect_type(version$major, "integer")
@@ -282,7 +281,7 @@ test_that('%info% es_version() returns a list of major, minor and build version 
 
 test_that('elastic_bulk_size get and set bulk size', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # act
@@ -296,14 +295,31 @@ test_that('elastic_bulk_size get and set bulk size', {
   elastic_bulk_size(currentSize)
 })
 
-
-test_that('%index% correctly indexes a large (>10mb single chunk) data frame', {
+test_that('elastic_parallel_index get and set parallel usability', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
+  skip_on_cran()
+
+  # act
+  current <- elastic_parallel_index()
+  elastic_parallel_index(FALSE)
+  new <- elastic_parallel_index()
+
+  # assert
+  expect_equal(TRUE, current)
+  expect_equal(FALSE, new)
+  elastic_parallel_index(current)
+})
+
+
+test_that('%index% correctly indexes a large (>10mb single chunk) data frame in parallel', {
+  # skip if on CRAN or Travis
+
   skip_on_cran()
 
   # arrange
   delete_test_data()
+
   iris_data_bulk <- data.frame(do.call(cbind, lapply(1:40, FUN = function(x) iris_data)))
   iris_data_bulk <- do.call(rbind, lapply(1:50, FUN = function(x) iris_data_bulk))
   iris_data_bulk['sort_key'] <- 1:nrow(iris_data_bulk)
@@ -312,8 +328,44 @@ test_that('%index% correctly indexes a large (>10mb single chunk) data frame', {
 
   # act
   elastic("http://localhost:9200", "iris", "_doc") %index% iris_data_bulk
-  wait_finish_indexing("http://localhost:9200/iris/data/_search?size=7500&q=*", nrow(iris_data_bulk))
-  query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=7500&q=*")
+
+  wait_finish_indexing("http://localhost:9200/iris/_count", nrow(iris_data_bulk))
+
+  query_response <- httr::POST("http://localhost:9200/iris/_doc/_search?size=7500&q=*")
+  query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
+  query_results <- query_results[order(query_results$sort_key),]
+  row.names(query_results) <- query_results$sort_key
+
+  # assert
+  expect_equal(iris_data_bulk, query_results)
+  delete_test_data()
+})
+
+
+test_that('%index% correctly indexes a large (>10mb single chunk) data frame synchronous', {
+  # skip if on CRAN or Travis
+  
+  skip_on_cran()
+
+  # arrange
+  delete_test_data()
+  
+  iris_data_bulk <- data.frame(do.call(cbind, lapply(1:40, FUN = function(x) iris_data)))
+  iris_data_bulk <- do.call(rbind, lapply(1:50, FUN = function(x) iris_data_bulk))
+  iris_data_bulk['sort_key'] <- 1:nrow(iris_data_bulk)
+  row.names(iris_data_bulk) <- 1:nrow(iris_data_bulk)
+  colnames(iris_data_bulk) <- cleaned_field_names(colnames(iris_data_bulk))
+
+  elastic_parallel_index(FALSE)
+
+  # act
+  elastic("http://localhost:9200", "iris", "_doc") %index% iris_data_bulk
+
+  wait_finish_indexing("http://localhost:9200/iris/_count", nrow(iris_data_bulk))
+
+  elastic_parallel_index(TRUE)
+
+  query_response <- httr::POST("http://localhost:9200/iris/_doc/_search?size=7500&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
   query_results <- query_results[order(query_results$sort_key), ]
   row.names(query_results) <- query_results$sort_key
@@ -324,9 +376,11 @@ test_that('%index% correctly indexes a large (>10mb single chunk) data frame', {
 })
 
 
+###parallel
+
 test_that('%create% can create an index with a custom mapping', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -345,16 +399,14 @@ test_that('%create% can create an index with a custom mapping', {
 
 test_that('%delete% can delete all documents from an index', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
-  # arrange
-  load_test_data()
-
   # act
+  load_test_data()
   elastic("http://localhost:9200", "iris") %delete% TRUE
-  wait_finish_delete("http://localhost:9200/iris/data/_search?size=150&q=*")
-  query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
+  wait_finish_delete("http://localhost:9200/iris/_doc/_search?size=150&q=*")
+  query_response <- httr::POST("http://localhost:9200/iris/_doc/_search?size=150&q=*")
   query_response_status <- httr::status_code(query_response)
 
   # assert
@@ -365,16 +417,15 @@ test_that('%delete% can delete all documents from an index', {
 
 test_that('%delete% can delete all documents from a type', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
-  # arrange
+  # act
   load_test_data()
 
-  # act
-  elastic("http://localhost:9200", "iris", "_doc") %delete% TRUE
-  wait_finish_delete("http://localhost:9200/iris/data/_search?size=150&q=*")
-  query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
+  elastic("http://localhost:9200", "iris", "_doc") %delete% ""
+  wait_finish_delete("http://localhost:9200/iris/_doc/_search?size=150&q=*")
+  query_response <- httr::POST("http://localhost:9200/iris/_doc/_search?size=150&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
   get_mapping <- httr::GET("http://localhost:9200/iris/_mapping")
   get_mapping_status <- httr::status_code(get_mapping)
@@ -388,21 +439,22 @@ test_that('%delete% can delete all documents from a type', {
 
 test_that('%delete% can delete selected documents from a type', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
   load_test_data()
-  query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
+  query_response <- httr::POST("http://localhost:9200/iris/_search?size=150&q=*")
   doc_ids <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_id`
 
   # act
   elastic("http://localhost:9200", "iris", "_doc") %delete% doc_ids
-  wait_finish_delete("http://localhost:9200/iris/data/_search?size=150&q=*")
-  query_response <- httr::POST("http://localhost:9200/iris/data/_search?size=150&q=*")
+  wait_finish_delete("http://localhost:9200/iris/_search")
+  query_response <- httr::POST("http://localhost:9200/iris/_search?size=150&q=*")
   query_results <- jsonlite::fromJSON(httr::content(query_response, as = 'text'))$hits$hits$`_source`
   get_mapping <- httr::GET("http://localhost:9200/iris/_mapping")
   get_mapping_status <- httr::status_code(get_mapping)
+
 
   # assert
   expect_null(query_results)
@@ -413,7 +465,7 @@ test_that('%delete% can delete selected documents from a type', {
 
 test_that('we can query using the %search% operator and return all documents', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -435,7 +487,7 @@ test_that('we can query using the %search% operator and return all documents', {
 
 test_that('we can query using the %search% operator and return documents sorted', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -451,14 +503,14 @@ test_that('we can query using the %search% operator and return documents sorted'
   rownames(query_results_sorted) <- query_results_sorted$sort_key
 
   # assert
-  expect_equal(query_results_sorted, iris_data[1:10, ])
+  expect_equal(query_results_sorted[1:10,], iris_data[1:10,])
   delete_test_data()
 })
 
 
 test_that('we can query using the %search% operator and return a subset of fields', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -477,14 +529,14 @@ test_that('we can query using the %search% operator and return a subset of field
   rownames(query_results_sorted) <- query_results_sorted$sort_key
 
   # assert
-  expect_equal(query_results_sorted, iris_data[, fields])
+  expect_equal(query_results_sorted[1:10,], iris_data[1:10, fields])
   delete_test_data()
 })
 
 
 test_that('we can query using the %search% operator and return a sorted subset of fields', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -502,11 +554,11 @@ test_that('we can query using the %search% operator and return a sorted subset o
   query_results <-
     elastic("http://localhost:9200", "iris", "_doc") %search% (es_query + es_filter_and_sort)
 
-  rownames(query_results) <- 1:150
+  rownames(query_results) <- 1:nrow(query_results)
 
   # assert
   iris_data_sorted <- iris_data[order(iris_data$sepal_length), colnames(query_results)]
-  rownames(iris_data_sorted) <- 1:150
+  rownames(iris_data_sorted) <- 1:nrow(iris_data_sorted)
   expect_equal(query_results, iris_data_sorted)
   delete_test_data()
 })
@@ -514,7 +566,7 @@ test_that('we can query using the %search% operator and return a sorted subset o
 
 test_that('we can use bucket aggregations using the %search% operator', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -536,7 +588,7 @@ test_that('we can use bucket aggregations using the %search% operator', {
 
 test_that('we can use base-metric aggregations using the %search% operator', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
@@ -555,12 +607,11 @@ test_that('we can use base-metric aggregations using the %search% operator', {
 
 test_that('we can query + sort using the %search% operator', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
   load_test_data()
-
   everything <- '{"match_all": {}}'
   by_sepal_width <- '[{"sepal_width": {"order": "asc"}}, {"sort_key": {"order": "asc"}}]'
 
@@ -570,11 +621,11 @@ test_that('we can query + sort using the %search% operator', {
 
   # act
   query_results <- elastic("http://localhost:9200", "iris", "_doc") %search% es_query_sorted
-  rownames(query_results) <- 1:150
+  rownames(query_results) <- 1:nrow(query_results)
 
   # assert
   iris_data_sorted <- iris_data[order(iris_data$sepal_width, iris_data$sort_key), ]
-  rownames(iris_data_sorted) <- 1:150
+  rownames(iris_data_sorted) <- 1:nrow(iris_data_sorted)
   expect_equal(query_results, iris_data_sorted)
   delete_test_data()
 })
@@ -582,12 +633,11 @@ test_that('we can query + sort using the %search% operator', {
 
 test_that('we can query + aggregate using the %search% operator', {
   # skip if on CRAN or Travis
-  skip_on_travis()
+  
   skip_on_cran()
 
   # arrange
   load_test_data()
-
   everything <- '{"match_all": {}}'
 
   avg_sepal_width_per_cat <- '{"avg_sepal_width_per_cat": {
@@ -605,7 +655,7 @@ test_that('we can query + aggregate using the %search% operator', {
   # assert
   expect_equal(aggs_results, iris_test_aggs_bucket)
   delete_test_data()
-  })
+})
 
 
 test_that('adding a sort object to a query object results in a query object', {

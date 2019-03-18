@@ -25,8 +25,8 @@ mapping_default_simple <- function(url = NULL) {
   doc_start <- '"_default_": {'
   doc_end <- '}'
 
-  if (!is.null(resource) && is_elastic_resource(resource)) {
-    version <- elastic(url) %info% es_version(resource)
+  if (!is.null(url)) {
+    version <- elastic(url) %info% es_version()
 
     if (version$major >= 7) {
       doc_start <- ''
@@ -84,8 +84,8 @@ mapping_fielddata_true <- function() {
   doc_start <- '"_default_": {'
   doc_end <- '}'
 
-  if (!is.null(resource) && is_elastic_resource(resource)) {
-    version <- elastic(url) %info% es_version(resource)
+  if (!is.null(url)) {
+    version <- elastic(url) %info% es_version()
 
     if (version$major >= 7) {
       doc_start <- ''

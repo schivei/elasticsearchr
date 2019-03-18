@@ -8,6 +8,16 @@
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <ResetReplOnRun>False</ResetReplOnRun>
+    <StartupFile>tests\testthat.R</StartupFile>
+    <CommandLineArgs />
+    <RemoteProjectPath>~/</RemoteProjectPath>
+    <TransferFilesFilter>*.r;*.rmd;*.sql;*.md;*.cpp</TransferFilesFilter>
+    <TransferProjectOnRun>True</TransferProjectOnRun>
+    <SettingsFile>
+    </SettingsFile>
+  </PropertyGroup>
   <ProjectExtensions>
     <VisualStudio>
       <UserProperties />
